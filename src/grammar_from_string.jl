@@ -15,12 +15,17 @@ function make_rules(rule_string::AbstractString)
 end
 
 function make_cfg_rule(lhs, rhs1, rhs2)
-    r = @closure x -> x == lhs ? (rhs1, rhs2) : nothing
+    r = NamedFunction(
+        "$lhs --> $rhs1 $rhs2",
+        @closure x -> x == lhs ? (rhs1, rhs2) : nothing)
+
     (rule = r, isterminal = false)
 end
 
 function make_cfg_rule(lhs, terminal)
-    r = @closure x -> x == lhs ? terminal : nothing
+    r = NamedFunction(
+        "$lhs --> $terminal",
+        @closure x -> x == lhs ? terminal : nothing)
     (rule = r, isterminal = true)
 end
 

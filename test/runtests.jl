@@ -1,4 +1,4 @@
-using GeneralizedChartParsing
+using Main.GeneralizedChartParsing
 using Test
 
 ############################
@@ -69,10 +69,19 @@ str = """
 
 g = grammar_from_string(str)
 g = add_score(g, :forest, enum_forest_score)
+g = add_random_prob_score(g, :count)
+g = add_expected_count_score(g, :prob)
+
+rule_strings = ["S --> A A", "S --> a", "A --> A A", "A --> a"]
+
+@test Set(map(string, g.all_rules)) == Set(rule_strings)
 
 p = parse(g, fill("a", 3))["S"]
 @test map(string, tree_structs(g, p.forest)) ==
     ["[S[A[a]][A[A[a]][A[a]]]]", "[S[A[A[a]][A[a]]][A[a]]]"]
+
+@test expected_counts_dataframe(g, p.exp_counts)[:rule] .|> string |> Set ==
+    Set(["S --> A A", "A --> A A", "A --> a"])
 
 str = """
     S --> A N

@@ -7,9 +7,7 @@ struct NamedFunction{F} <: Function
     f    :: F
 end
 
-show(io::IO, nf::NamedFunction) =
-    print(io, nf.name)
-
+show(io::IO, nf::NamedFunction) = print(io, nf.name)
 (nf::NamedFunction)(x)  = (nf.f)(x)
 
 #####################
@@ -105,9 +103,9 @@ function Grammar(
 end
 
 score(g::Grammar, catidx, ruleidx) = map(eval_at(catidx, ruleidx), g.scores)
-mergeable(g::Grammar, rhs) = haskey(g.binary_dict, rhs)
-merge(g::Grammar, rhs) = g.binary_dict[rhs]
-categorize(g::Grammar, terminal) = g.terminal_dict[terminal]
+mergeable(g::Grammar, rhs)         = haskey(g.binary_dict, rhs)
+merge(g::Grammar, rhs)             = g.binary_dict[rhs]
+categorize(g::Grammar, terminal)   = g.terminal_dict[terminal]
 
 ##################
 ### The Parser ###
