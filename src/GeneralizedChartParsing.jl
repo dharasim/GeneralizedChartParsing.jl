@@ -12,6 +12,7 @@ module GeneralizedChartParsing
 	import Base: IteratorSize, eltype, iterate
 	import Base: parse, rand, merge, convert
 
+	export NamedFunction
 	export Grammar, grammar_from_string
 	export add_score, add_random_prob_score, add_expected_count_score
 	export count_score, enum_forest_score, forest_score
