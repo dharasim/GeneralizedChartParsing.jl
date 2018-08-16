@@ -1,4 +1,4 @@
-using Main.GeneralizedChartParsing
+using GeneralizedChartParsing
 using Test
 
 ##############################
@@ -39,7 +39,7 @@ s = parse(g, terminals)[1]
 @test string.(tree_structs(g, s.enum_forest)) == ts
 
 s = parse(g, fill("1", 10))[1]
-@test length(tree_structs(g, s.enum_forest)) == s.count == Main.GeneralizedChartParsing.number_binary_trees(10)
+@test length(tree_structs(g, s.enum_forest)) == s.count == GeneralizedChartParsing.number_binary_trees(10)
 
 g = Grammar(categories, start_categories, binary_rules, terminal_rules, depcomp)
 g = add_random_prob_score(g, :count)
