@@ -1,5 +1,7 @@
 eval_at(args...) = f -> f(args...)
 
+findallin(xs, ys) = map(x -> findfirst(y -> x == y, ys), xs)
+
 zero(a::Union{Tuple, NamedTuple}) = map(zero, a)
 one(a::Union{Tuple, NamedTuple})  = map(one, a)
 
@@ -43,7 +45,7 @@ count_score(category, rule) = rule(category) === nothing ? 0 : 1
 function expected_count_score(g::Grammar, base_score_name::Symbol)
     @closure (catidx, ruleidx) ->
         let dcompidx = g.catidx2dcompidx[catidx]
-            p        = getfield(score(g, dcompidx, ruleidx), base_score_name)
+            p        = getfield(score(g, catidx, ruleidx), base_score_name)
             m, n     = length(g.depcomps), length(g.all_rules)
             c        = sparse([dcompidx], [ruleidx], p, m, n)
             ExpectedCounts(p, c)
@@ -123,9 +125,9 @@ end
 
 function random_prob_score(g::Grammar, base_score_name::Symbol)
     params = collect(
-        getfield(score(g, dcompidx, ruleidx), base_score_name)
-        for dcompidx in eachindex(g.depcomps),
-            ruleidx  in eachindex(g.all_rules)
+        getfield(score(g, catidx, ruleidx), base_score_name)
+        for catidx  in findallin(unique(g.depcomp, g.categories), g.categories),
+            ruleidx in eachindex(g.all_rules)
     )
 
     probs = sample_dirichlet_rows(params)
