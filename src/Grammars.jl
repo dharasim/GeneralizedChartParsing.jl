@@ -1,3 +1,17 @@
+#######################
+### Named Functions ###
+#######################
+
+struct NamedFunction{F} <: Function
+    name :: String
+    f    :: F
+end
+
+show(io::IO, nf::NamedFunction) =
+    print(io, nf.name)
+
+(nf::NamedFunction)(x)  = (nf.f)(x)
+
 #####################
 ### Grammar Class ###
 #####################
@@ -25,7 +39,7 @@ function Grammar(
         start_categories :: Vector,
         binary_rules_    :: Vector,
         terminal_rules_  :: Vector,
-        depcomp          :: Function,
+        depcomp,
         scores_          :: NamedTuple = (count = count_score,)
     )
 
@@ -67,11 +81,9 @@ function Grammar(
     binary_dict   = multidict_from_list(binary_rhss)
     terminal_dict = multidict_from_list(terminal_rhss)
 
-    # @assert isimmutable(scores(categories[1], binary_rules[1]))
-
-    score_matrix(s) = [s(c, r) for c in unique(depcomp, categories), r in all_rules]
-
-    score_matrices = map(score_matrix, scores_)
+    one_dcomp_per_category = unique(depcomp, categories)
+    score_matrix(s) = [s(c, r) for c in one_dcomp_per_category, r in all_rules]
+    score_matrices  = map(score_matrix, scores_)
 
     scores = map(score_matrices) do M
         @closure (catidx, ruleidx) -> M[catidx2dcompidx[catidx], ruleidx]

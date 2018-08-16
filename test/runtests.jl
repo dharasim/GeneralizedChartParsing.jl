@@ -1,6 +1,14 @@
 using GeneralizedChartParsing
 using Test
 
+############################
+### Named Function Tests ###
+############################
+
+f = NamedFunction("goo", x -> x + 2)
+@test string(f) == "goo"
+@test f(3) == 5
+
 ##############################
 ### Construct Test Grammar ###
 ##############################
