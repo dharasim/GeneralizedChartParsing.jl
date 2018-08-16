@@ -10,7 +10,7 @@ module GeneralizedChartParsing
 
 	import Base: zero, one, +, *
 	import Base: IteratorSize, eltype, iterate
-	import Base: parse, rand, merge, convert
+	import Base: parse, rand, merge, convert, show
 
 	export NamedFunction
 	export Grammar, grammar_from_string
