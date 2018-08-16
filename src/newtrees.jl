@@ -1,41 +1,44 @@
 module Trees
 
-import Base: parent, show, start, next, done, eltype, length, map
+import Base: parent, show, iterate, eltype, length, IteratorSize, map
 export Tree, data, children, isleaf, isroot, parent, add_child!, tree, leaf_data
 export @tree_str
 
 mutable struct Tree{T}
     data    :: T
-    parent  :: Nullable{Tree{T}}
+    parent  :: Union{Tree{T}, Nothing}
     children:: Vector{Tree{T}}
 end
 
-Tree{T}(data, parent::Tree{T}) = Tree(data, Nullable(parent), Vector{Tree{T}}())
-Tree(data, T=typeof(data)) = Tree(data, Nullable{Tree{T}}(), Vector{Tree{T}}())
+Tree(data, parent::Tree{T}) where T = Tree(data, parent, Tree{T}[])
+Tree(data, T = typeof(data)) = Tree(data, nothing, Tree{T}[])
 
-data(tree::Tree) = tree.data
+data(tree::Tree)     = tree.data
 children(tree::Tree) = tree.children
-isleaf(tree::Tree) = isempty(tree.children)
-isroot(tree::Tree) = isnull(tree.parent)
-parent(tree::Tree) = get(tree.parent)
+isleaf(tree::Tree)   = isempty(tree.children)
+isroot(tree::Tree)   = tree.parent === nothing
+parent(tree::Tree)   = tree.parent
 
 function show(io::IO, tree::Tree)
-    print(io, '[', tree.data)
-    for child in tree.children
+    print(io, '[', data(tree))
+    for child in children(tree)
       print(io, child)
     end
     print(io, ']')
 end
 
-add_child!{T}(tree::Tree{T}, data::T) = push!(tree.children, Tree(data, tree))
-function add_child!{T}(tree::Tree{T}, child::Tree{T})
-    child.parent = Nullable(tree)
-    push!(tree.children, child)
+function add_child!(tree::Tree{T}, data::T) where T
+    push!(children(tree), Tree(data, tree))
+end
+
+function add_child!(tree::Tree{T}, child::Tree{T}) where T
+    child.parent = tree
+    push!(children(tree), child)
 end
 
 function tree(str::AbstractString)
     node = Tree("")
-    str  = replace(str, " ", "")[2:end-1]
+    str  = replace(str, " " => "")[2:end-1]
 
     for c in str
         if c == '['
@@ -52,18 +55,22 @@ end
 
 macro tree_str(str) tree(str) end
 
-start(tree::Tree) = [tree]
-next{T}(::Tree{T}, list::Vector{Tree{T}}) =
-    list[1], prepend!(list[2:end], children(list[1]))
-done{T}(::Tree{T}, list::Vector{Tree{T}}) = isempty(list)
-eltype{T}(::Type{Tree{T}}) = Tree{T}
-length(tree::Tree) = isleaf(tree) ? 1 : 1 + sum(length(c) for c in children(tree))
+eltype(::Type{Tree{T}}) where T = Tree{T}
+IteratorSize(::Type{Tree{T}}) where T = Base.SizeUnknown()
 
-leaf_data(tree::Tree) = [node.data for node in tree if isleaf(node)]
+function iterate(tree::Tree, state = [tree])
+    if isempty(state)
+        nothing
+    else
+        state[1], prepend!(state[2:end], children(state[1]))
+    end
+end
 
-function Base.map(f, t::Tree; uniform_type=true)
+leaf_data(tree::Tree) = [data(node) for node in tree if isleaf(node)]
+
+function map(f, t::Tree; uniform_type=true)
     n = uniform_type ? Tree(f(t.data)) : Tree(f(t.data), Any)
-    for c in t.children
+    for c in children(t)
         add_child!(n, map(f, c, uniform_type=uniform_type))
     end
     n
@@ -72,7 +79,7 @@ end
 end # module
 
 # tests
-# using Trees
+# using Main.Trees
 # t = Tree("head")
 # add_child!(t, "left")
 # add_child!(t, "right")
