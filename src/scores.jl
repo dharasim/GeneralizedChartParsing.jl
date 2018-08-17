@@ -160,6 +160,11 @@ one(::Type{EnumForest})  = EnumForest([Tuple{Int, Int}[]])
 ### Scored Forests ###
 ######################
 
+function add_forest_score(
+        g::Grammar, base_score_name::Symbol, score_name::Symbol=:forest)
+    add_score(g, score_name, forest_score(getfield(g.scores, base_score_name)))
+end
+
 forest_score(score) =
     (catidx, ruleidx) -> [RuleApp(catidx, ruleidx, score(catidx, ruleidx))]
 
