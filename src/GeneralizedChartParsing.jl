@@ -14,7 +14,7 @@ module GeneralizedChartParsing
 
 	export NamedFunction
 	export Grammar, grammar_from_string
-	export add_score, add_random_prob_score, add_expected_count_score
+	export add_score, add_random_prob_score, add_expected_count_score, add_forest_score
 	export count_score, enum_forest_score, forest_score
 	export tree_struct, tree_structs, expected_counts_dataframe
 
