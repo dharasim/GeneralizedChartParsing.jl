@@ -2,16 +2,24 @@ __precompile__()
 
 module GeneralizedChartParsing
 
+# from standard library
+using Distributed
+using SpecialFunctions: digamma
+using SparseArrays:     SparseMatrixCSC, sparse, spzeros, findnz
+using LinearAlgebra:    normalize
+
+# other packages
 using LogProbs
 using FastClosures
 using DataFrames
-using SparseArrays: SparseMatrixCSC, sparse, spzeros, findnz
 using Distributions: Dirichlet
 
+# imports
 import Base: zero, one, +, *
 import Base: IteratorSize, eltype, iterate
 import Base: parse, rand, merge, convert, show
 
+# exports
 export NamedFunction
 export categorical_sample
 export Grammar, grammar_from_string
@@ -26,6 +34,7 @@ include("newtrees.jl")
 include("Grammars.jl")
 include("scores.jl")
 include("grammar_from_string.jl")
+include("variational_bayes.jl")
 
 using .Trees
 using .LazyDicts

@@ -1,6 +1,9 @@
 using GeneralizedChartParsing
 using Test
 
+using Random:        seed!
+using LinearAlgebra: norm
+
 ###################
 ### Utils Tests ###
 ###################
@@ -103,3 +106,27 @@ p = parse(g, split("a a b b"))["S"]
 
 @test map(string, tree_structs(g, p.forest)) ==
     ["[S[A[a]][N[S[A[a]][N[b]]][B[b]]]]"]
+
+###############################
+### Variational Bayes Tests ###
+###############################
+
+g = grammar_from_string("S --> S S | a | b")
+g = set_scores(g, (prior = g.scores.count,))
+g = add_random_prob_score(g, :prior)
+g = add_forest_score(g, :prob)
+
+dataset = [[categorical_sample(["a", "b"], [.3, .7]) for i in 1:10] for i in 1:100]
+
+loglikelihoods = Float64[]
+
+seed!(42)
+
+@time for i in 1:5
+    global g, p = train_grammar(g, dataset)
+    push!(loglikelihoods, log(p))
+end
+
+@test isapprox(
+    norm(map(float, vec(tabulate_score(g, :prob))) - [9 / 19, 3 / 19, 7 / 19]),
+    0.010642222869212594)

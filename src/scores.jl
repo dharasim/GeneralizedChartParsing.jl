@@ -1,16 +1,12 @@
-eval_at(args...) = f -> f(args...)
-
-findallin(xs, ys) = map(x -> findfirst(y -> x == y, ys), xs)
-
 zero(a::Union{Tuple, NamedTuple}) = map(zero, a)
 one(a::Union{Tuple, NamedTuple})  = map(one, a)
 
 +(a::T, b::T) where T <: Union{Tuple, NamedTuple} = map(+, a, b)
 *(a::T, b::T) where T <: Union{Tuple, NamedTuple} = map(*, a, b)
 
-#################################
-### Add and set score methods ###
-#################################
+#############################
+### general score methods ###
+#############################
 
 function set_scores(g::Grammar, scores::NamedTuple)
     Grammar(
@@ -30,6 +26,14 @@ end
 
 function add_score(g::Grammar, name::Symbol, score)
     set_scores(g, merge(g.scores, NamedTuple{(name,)}((score,))))
+end
+
+function tabulate_score(g::Grammar, score_name::Symbol)
+    collect(
+        getfield(score(g, catidx, ruleidx), score_name)
+        for catidx  in findallin(unique(g.depcomp, g.categories), g.categories),
+            ruleidx in eachindex(g.all_rules)
+    )
 end
 
 ###################

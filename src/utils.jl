@@ -1,24 +1,27 @@
-"""
-    mapvalues(f, dict)
+eval_at(args...) = f -> f(args...)
+findallin(xs, ys) = map(x -> findfirst(y -> x == y, ys), xs)
 
-map a function to the values of a dictionary
-"""
-function mapvalues(f, d::Dict)
-    Dict(k => f(v) for (k,v) in d)
-end
-
-
-"""
-    mapvalues(f, dict)
-
-map a function to the values of a dictionary in place
-"""
-function mapvalues!(f, d::Dict)
-    for k in keys(d)
-        d[k] = f(d[k])
-    end
-    d
-end
+# """
+#     mapvalues(f, dict)
+#
+# map a function to the values of a dictionary
+# """
+# function mapvalues(f, d::Dict)
+#     Dict(k => f(v) for (k,v) in d)
+# end
+#
+#
+# """
+#     mapvalues(f, dict)
+#
+# map a function to the values of a dictionary in place
+# """
+# function mapvalues!(f, d::Dict)
+#     for k in keys(d)
+#         d[k] = f(d[k])
+#     end
+#     d
+# end
 
 """
     catalan_number(n)
@@ -52,49 +55,49 @@ function categorical_sample(tokens, weights)
     error("categorical sample failed with length(tokens)=$(length(tokens)), weights=$weights")
 end
 
-categorical_sample(d::Dict) = categorical_sample(keys(d), values(d))
+categorical_sample(d::Dict)   = categorical_sample(keys(d), values(d))
 categorical_sample(v::Vector) = categorical_sample(1:length(v), v)
 
 ###################
 ### Categorical ###
 ###################
 
-mutable struct Categorical{T}
-	probs :: Dict{T, LogProb}
-
-	function Categorical(params::Dict{T, _}) where {T, _}
-		s = sum(values(params))
-		new{T}(mapvalues(v->LogProb(v/s), params))
-	end
-end
-
-sample(c::Categorical) = categorical_sample(probs)
-logscore(c::Categorical, x) = c.probs[x]
+# mutable struct Categorical{T}
+# 	probs :: Dict{T, LogProb}
+#
+# 	function Categorical(params::Dict{T, _}) where {T, _}
+# 		s = sum(values(params))
+# 		new{T}(mapvalues(v->LogProb(v/s), params))
+# 	end
+# end
+#
+# sample(c::Categorical) = categorical_sample(probs)
+# logscore(c::Categorical, x) = c.probs[x]
 
 #############################>
 ### Dirichlet Categorical ###
 #############################
 
-mutable struct DirCat{T, C}
-    counts :: Dict{T, C}
-end
-
-DirCat(support, priors) = DirCat(Dict(x => p for (x,p) in zip(support, priors)))
-support(dc::DirCat) = keys(dc.counts)
-
-function sample(dc::DirCat)
-    weights = [gammarand(c, 1) for c in values(dc.counts)]
-    categorical_sample(keys(dc.counts), weights)
-end
-
-function logscore(dc::DirCat, obs)
-    LogProb(lbeta(sum(values(dc.counts)), 1) - lbeta(dc.counts[obs], 1))
-end
-
-function add_obs!(dc::DirCat, obs)
-    dc.counts[obs] += 1
-end
-
-function rm_obs!(dc::DirCat, obs)
-    dc.counts[obs] -= 1
-end
+# mutable struct DirCat{T, C}
+#     counts :: Dict{T, C}
+# end
+#
+# DirCat(support, priors) = DirCat(Dict(x => p for (x,p) in zip(support, priors)))
+# support(dc::DirCat) = keys(dc.counts)
+#
+# function sample(dc::DirCat)
+#     weights = [gammarand(c, 1) for c in values(dc.counts)]
+#     categorical_sample(keys(dc.counts), weights)
+# end
+#
+# function logscore(dc::DirCat, obs)
+#     LogProb(lbeta(sum(values(dc.counts)), 1) - lbeta(dc.counts[obs], 1))
+# end
+#
+# function add_obs!(dc::DirCat, obs)
+#     dc.counts[obs] += 1
+# end
+#
+# function rm_obs!(dc::DirCat, obs)
+#     dc.counts[obs] -= 1
+# end
