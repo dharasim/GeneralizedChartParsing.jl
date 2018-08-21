@@ -36,7 +36,7 @@ function estimate_rule_counts(
     end
 
     counts = foldr(vec(trees), init = fill(0, m, n)) do (c, r), M
-        M[g.catidx2dcompidx[c], r] += 1
+        M[grammar.catidx2dcompidx[c], r] += 1
         M
     end
 
@@ -51,12 +51,12 @@ Calculate the updated variational probabilities according to the `pseudocounts`.
 Rowwise calculation if pseudocounts is a matric
 """
 function variational_probs(pseudocounts::AbstractVector)
-    s = sum(rule_counts)
-    normalize(map(a ->exp(digamma(a)), rule_counts), 1)
+    s = sum(pseudocounts)
+    normalize(map(a ->exp(digamma(a)), pseudocounts), 1)
 end
 
-function variational_probs(rule_counts::AbstractMatrix)
-    mapslices(variational_probs, rule_counts, dims=2)
+function variational_probs(pseudocounts::AbstractMatrix)
+    mapslices(variational_probs, pseudocounts, dims=2)
 end
 
 """
@@ -74,26 +74,30 @@ the initial grammar.
 - `grammar` has a score named `:forest` from which trees can be sampled as
   iterable objects of tuples of category indices and rule indices
 """
-function train_grammar(g::Grammar, dataset)
+function train_grammar(grammar::Grammar, dataset)
     # add counts, multiply likelihoods
     reduce((c1, p1), (c2, p2)) = (c1 + c2, p1 * p2)
 
     rule_counts, likelihood = @distributed (reduce) for terminals in dataset
-        estimate_rule_counts(g, terminals)
+        estimate_rule_counts(grammar, terminals)
     end
 
-    pseudocounts = rule_counts + tabulate_score(g, :prior)
+    pseudocounts = rule_counts + tabulate_score(grammar, :prior)
 
     vprobs = variational_probs(pseudocounts)
     probs  = mapslices(row -> normalize(row, 1), pseudocounts, dims=2)
 
     vprob_score = @closure (catidx, ruleidx) ->
-        LogProb(vprobs[g.catidx2dcompidx[catidx], ruleidx])
+        LogProb(vprobs[grammar.catidx2dcompidx[catidx], ruleidx])
 
     prob_score  = @closure (catidx, ruleidx) ->
-        LogProb(probs[g.catidx2dcompidx[catidx], ruleidx])
+        LogProb(probs[grammar.catidx2dcompidx[catidx], ruleidx])
 
-    g = set_scores(g, (prior = g.scores.prior, vprob = vprob_score, prob = prob_score))
-    g = add_forest_score(g, :vprob)
-    g, likelihood
+    trained_grammar = set_scores(grammar,
+        (prior = grammar.scores.prior,
+         vprob = vprob_score,
+         prob  = prob_score)
+    )
+
+    add_forest_score(trained_grammar, :vprob), likelihood
 end

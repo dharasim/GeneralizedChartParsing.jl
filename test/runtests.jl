@@ -1,7 +1,6 @@
 using GeneralizedChartParsing
 using Test
 
-using Random:        seed!
 using LinearAlgebra: norm
 
 ###################
@@ -120,13 +119,9 @@ dataset = [[categorical_sample(["a", "b"], [.3, .7]) for i in 1:10] for i in 1:1
 
 loglikelihoods = Float64[]
 
-seed!(42)
-
-@time for i in 1:5
+for i in 1:5
     global g, p = train_grammar(g, dataset)
     push!(loglikelihoods, log(p))
 end
 
-@test isapprox(
-    norm(map(float, vec(tabulate_score(g, :prob))) - [9 / 19, 3 / 19, 7 / 19]),
-    0.010642222869212594)
+@test norm(map(float, vec(GeneralizedChartParsing.tabulate_score(g, :prob))) - [9 / 19, 3 / 19, 7 / 19]) < 0.01
