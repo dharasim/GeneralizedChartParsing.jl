@@ -40,8 +40,9 @@ number_binary_trees(n) = catalan_number(n - 1)
 sample one token according to the given weights
 """
 function categorical_sample(tokens, weights)
-    x = rand() * sum(weights)
-    cum_weights = zero(eltype(weights))
+    T = eltype(weights)
+    x = convert(T, rand()) * sum(weights)
+    cum_weights = zero(T)
     for (t, w) in zip(tokens, weights)
         cum_weights += w
         if cum_weights >= x
