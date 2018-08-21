@@ -2,6 +2,7 @@ using GeneralizedChartParsing
 using Test
 
 using LinearAlgebra: norm
+using Random:        randperm
 
 ###################
 ### Utils Tests ###
@@ -115,7 +116,9 @@ g = set_scores(g, (prior = g.scores.count,))
 g = add_random_prob_score(g, :prior)
 g = add_forest_score(g, :prob)
 
-dataset = [[categorical_sample(["a", "b"], [.3, .7]) for i in 1:10] for i in 1:100]
+dataset = let terminals = [fill("a", 3); fill("b", 7)]
+    [terminals[randperm(10)] for i in 1:100]
+end
 
 loglikelihoods = Float64[]
 
@@ -124,4 +127,9 @@ for i in 1:5
     push!(loglikelihoods, log(p))
 end
 
-@test norm(map(float, vec(GeneralizedChartParsing.tabulate_score(g, :prob))) - [9 / 19, 3 / 19, 7 / 19]) < 0.01
+true_parameters =
+    [9 / 19, 3 / 19, 7 / 19]
+inferred_parameters =
+    map(float, vec(GeneralizedChartParsing.tabulate_score(g, :prob)))
+
+@test norm(true_parameters - inferred_parameters) < 0.01

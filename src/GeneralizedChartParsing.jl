@@ -21,7 +21,6 @@ import Base: parse, rand, merge, convert, show
 
 # exports
 export NamedFunction
-export categorical_sample
 export Grammar, grammar_from_string, train_grammar
 export add_score, set_scores
 export add_random_prob_score, add_expected_count_score, add_forest_score
