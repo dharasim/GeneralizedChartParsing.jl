@@ -1,5 +1,15 @@
-zero(a::Union{Tuple, NamedTuple}) = map(zero, a)
-one(a::Union{Tuple, NamedTuple})  = map(one, a)
+params = ["T1" * foldr(*, [",T$i" for i in 2:n], init="") for n in 1:20]
+for ps in params
+    eval(Meta.parse("zero(::Type{Tuple{$ps}}) where {$ps} = map(zero, ($ps,))"))
+    eval(Meta.parse("one( ::Type{Tuple{$ps}}) where {$ps} = map(one,  ($ps,))"))
+
+    eval(Meta.parse(
+        "zero(::Type{NamedTuple{names, Tuple{$ps}}}) where {names, $ps} = NamedTuple{names}(map(zero, ($ps,)))"
+    ))
+    eval(Meta.parse(
+        "one( ::Type{NamedTuple{names, Tuple{$ps}}}) where {names, $ps} = NamedTuple{names}(map(one,  ($ps,)))"
+    ))
+end
 
 +(a::T, b::T) where T <: Union{Tuple, NamedTuple} = map(+, a, b)
 *(a::T, b::T) where T <: Union{Tuple, NamedTuple} = map(*, a, b)
@@ -185,6 +195,8 @@ end
 
 ScoredForest{S} = Vector{RuleApp{S}}
 score(f::ScoredForest) = sum(ra.score for ra in f)
+
+zero(::Type{ScoredForest{S}}) where S = RuleApp{S}[]
 
 +(f::ScoredForest, g::ScoredForest) = append!(f, g)
 +(f::ScoredForest, ra::RuleApp) = push!(f, ra)
