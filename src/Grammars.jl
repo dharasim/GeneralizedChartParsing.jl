@@ -16,7 +16,7 @@ show(io::IO, nf::NamedFunction) = print(io, nf.name)
 
 isapplicable(r, c) = r(c) !== nothing
 
-Completion = Vector{NamedTuple{(:catidx, :ruleidx), Tuple{Int, Int}}}
+Completion = Tuple{Int, Int} # category indices and rule indices
 
 mutable struct Grammar{C, D, F, S, T}
     categories       :: Vector{C}
@@ -27,8 +27,8 @@ mutable struct Grammar{C, D, F, S, T}
     binary_rules     :: Vector{Function}
     terminal_rules   :: Vector{Function}
     all_rules        :: Vector{Function}
-    binary_dict      :: Dict{Tuple{Int, Int}, Completion}
-    terminal_dict    :: Dict{T, Completion}
+    binary_dict      :: Dict{Tuple{Int, Int}, Vector{Completion}}
+    terminal_dict    :: Dict{T, Vector{Completion}}
     scores           :: S
 end
 
@@ -60,12 +60,12 @@ function Grammar(
     catidx2dcompidx = map(dcompidx ∘ depcomp, categories)
 
     binary_rhss = collect(
-        (map(catidx, r(c)), (catidx = catidx(c), ruleidx = ruleidx(r)))
+        (map(catidx, r(c)), (catidx(c), ruleidx(r)))
         for r in binary_rules for c in categories if isapplicable(r, c)
     )
 
     terminal_rhss = collect(
-        (r(c), (catidx = catidx(c), ruleidx = ruleidx(r)))
+        (r(c), (catidx(c), ruleidx(r)))
         for r in terminal_rules for c in categories if isapplicable(r, c)
     )
 
@@ -105,7 +105,14 @@ end
 score(g::Grammar, catidx, ruleidx) = map(eval_at(catidx, ruleidx), g.scores)
 mergeable(g::Grammar, rhs)         = haskey(g.binary_dict, rhs)
 merge(g::Grammar, rhs)             = g.binary_dict[rhs]
-categorize(g::Grammar, terminal)   = g.terminal_dict[terminal]
+
+function categorize(g::Grammar, terminal)
+    if haskey(g.terminal_dict, terminal)
+        g.terminal_dict[terminal]
+    else
+        Vector{Completion}()
+    end
+end
 
 ##################
 ### The Parser ###
@@ -140,7 +147,7 @@ function parse(g::Grammar, terminals)
                             if haskey(cell, lhs)
                                 cell[lhs] += score(g, lhs, r) * s1 * s2
                             else
-                                cell[lhs] = score(g, lhs, r) * s1 * s2
+                                cell[lhs] =  score(g, lhs, r) * s1 * s2
                             end
                         end
                     end
@@ -151,8 +158,9 @@ function parse(g::Grammar, terminals)
     end
 
     heads = chart[1, length(terminals)]
+    println(valtype(heads))
     Dict(
-        g.categories[k] => v
-        for (k, v) in heads if g.categories[k] in g.start_categories
+        startcat => haskey(heads, catidx) ? heads[catidx] : zero(valtype(heads))
+        for (catidx, startcat) in enumerate(g.start_categories)
     )
 end
