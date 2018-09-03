@@ -1,34 +1,35 @@
 module Trees
 
 import Base: parent, show, iterate, eltype, length, IteratorSize, map
-export Tree, data, children, isleaf, isroot, parent, add_child!, tree, leaf_data
+
+export Tree, value, isleaf, isroot, parent, add_child!, tree, leaf_values, children
 export @tree_str
 
 mutable struct Tree{T}
-    data    :: T
+    value    :: T
     parent  :: Union{Tree{T}, Nothing}
     children:: Vector{Tree{T}}
 end
 
-Tree(data, parent::Tree{T}) where T = Tree(data, parent, Tree{T}[])
-Tree(data, T = typeof(data)) = Tree(data, nothing, Tree{T}[])
+Tree(value, parent::Tree{T}) where T = Tree(value, parent, Tree{T}[])
+Tree(value, T = typeof(value)) = Tree(value, nothing, Tree{T}[])
 
-data(tree::Tree)     = tree.data
+value(tree::Tree)    = tree.value
 children(tree::Tree) = tree.children
 isleaf(tree::Tree)   = isempty(tree.children)
 isroot(tree::Tree)   = tree.parent === nothing
 parent(tree::Tree)   = tree.parent
 
 function show(io::IO, tree::Tree)
-    print(io, '[', data(tree))
+    print(io, '[', value(tree))
     for child in children(tree)
       print(io, child)
     end
     print(io, ']')
 end
 
-function add_child!(tree::Tree{T}, data::T) where T
-    push!(children(tree), Tree(data, tree))
+function add_child!(tree::Tree{T}, value::T) where T
+    push!(children(tree), Tree(value, tree))
 end
 
 function add_child!(tree::Tree{T}, child::Tree{T}) where T
@@ -47,7 +48,7 @@ function tree(str::AbstractString)
         elseif c == ']'
             node = parent(node)
         else
-            node.data *= c
+            node.value *= c
         end
     end
     node
@@ -66,10 +67,10 @@ function iterate(tree::Tree, state = [tree])
     end
 end
 
-leaf_data(tree::Tree) = [data(node) for node in tree if isleaf(node)]
+leaf_values(tree::Tree) = [value(node) for node in tree if isleaf(node)]
 
 function map(f, t::Tree; uniform_type=true)
-    n = uniform_type ? Tree(f(t.data)) : Tree(f(t.data), Any)
+    n = uniform_type ? Tree(f(t.value)) : Tree(f(t.value), Any)
     for c in children(t)
         add_child!(n, map(f, c, uniform_type=uniform_type))
     end
@@ -85,6 +86,6 @@ end # module
 # add_child!(t, "right")
 # string(t) == "[head[left][right]]"
 # string(tree"[C[G][C]]") == "[C[G][C]]"
-# data.(collect(tree"[C[G][C]]")) == ["C", "G", "C"]
-# leaf_data(tree"[C[G][C]]") == ["G", "C"]
+# value.(collect(tree"[C[G][C]]")) == ["C", "G", "C"]
+# leaf_values(tree"[C[G][C]]") == ["G", "C"]
 # string(map(str->str*"m", tree"[C[G][C]]")) == "[Cm[Gm][Cm]]"

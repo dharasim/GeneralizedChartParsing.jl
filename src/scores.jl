@@ -1,4 +1,5 @@
 params = ["T1" * foldr(*, [",T$i" for i in 2:n], init="") for n in 1:20]
+
 for ps in params
     eval(Meta.parse("zero(::Type{Tuple{$ps}}) where {$ps} = map(zero, ($ps,))"))
     eval(Meta.parse("one( ::Type{Tuple{$ps}}) where {$ps} = map(one,  ($ps,))"))
@@ -167,8 +168,10 @@ end
 zero(::Type{EnumForest}) = EnumForest(Vector{Tuple{Int, Int}}[])
 one(::Type{EnumForest})  = EnumForest([Tuple{Int, Int}[]])
 
-+(f::EnumForest, g::EnumForest) = EnumForest( [f.trees; g.trees] )
-*(f::EnumForest, g::EnumForest) = EnumForest( [[tf; tg] for tf in f.trees for tg in g.trees] )
++(f::EnumForest, g::EnumForest) =
+    EnumForest( [f.trees; g.trees] )
+*(f::EnumForest, g::EnumForest) =
+    EnumForest( [[tf; tg] for tf in f.trees for tg in g.trees] )
 
 ######################
 ### Scored Forests ###
@@ -179,8 +182,9 @@ function add_forest_score(
     add_score(g, score_name, forest_score(getfield(g.scores, base_score_name)))
 end
 
-forest_score(score) =
-    (catidx, ruleidx) -> [RuleApp(catidx, ruleidx, score(catidx, ruleidx))]
+forest_score(score) = function (catidx, ruleidx)
+    [RuleApp(catidx, ruleidx, score(catidx, ruleidx))]
+end
 
 mutable struct RuleApp{S}
     catidx   :: Int
@@ -255,8 +259,8 @@ function tree_struct(grammar, catidxs_and_ruleidxs)
         else
             r, rs = rules[1], rules[2:end]
             n, ns = nodes[1], nodes[2:end]
-            if n.data in grammar.categories && isapplicable(r, n.data)
-                for c in r(n.data)
+            if n.value in grammar.categories && isapplicable(r, n.value)
+                for c in r(n.value)
                     add_child!(n, c)
                 end
                 apply_rules!([children(n); ns], rs)

@@ -158,7 +158,6 @@ function parse(g::Grammar, terminals)
     end
 
     heads = chart[1, length(terminals)]
-    println(valtype(heads))
     Dict(
         startcat => haskey(heads, catidx) ? heads[catidx] : zero(valtype(heads))
         for (catidx, startcat) in enumerate(g.start_categories)

@@ -133,3 +133,9 @@ inferred_parameters =
     map(float, vec(GeneralizedChartParsing.tabulate_score(g, :prob)))
 
 @test norm(true_parameters - inferred_parameters) < 0.01
+
+tree = parse(g, split("a a b a"))["S"].forest |> rand |> collect |> t->tree_struct(g, t)
+
+using TikzQTrees
+
+TikzQTree(tree)
