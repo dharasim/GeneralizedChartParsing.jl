@@ -11,9 +11,8 @@ It is still in development and thus currently limited to grammars in [Chomsky no
 
 Install the package by typing
 ```
-add https://github.com/dharasim/GeneralizedChartParsing.jl
+(v0.7) pkg> add https://github.com/dharasim/GeneralizedChartParsing.jl
 ```
-
 in the Julia package manager prompt.
 
-See the [tutorial notebook](TODO) for how to use this package.
+See the [tutorial notebook](http://nbviewer.jupyter.org/github/dharasim/GeneralizedChartParsing.jl/blob/master/tutorial_notebook.ipynb) for how to use this package.
