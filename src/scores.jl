@@ -58,17 +58,18 @@ count_score(category, rule) = rule(category) === nothing ? 0 : 1
 #############################
 
 function expected_count_score(g::Grammar, base_score_name::Symbol)
-    @closure (catidx, ruleidx) ->
-        let dcompidx = g.catidx2dcompidx[catidx]
-            p        = getfield(score(g, catidx, ruleidx), base_score_name)
-            m, n     = length(g.depcomps), length(g.all_rules)
-            c        = sparse([dcompidx], [ruleidx], p, m, n)
-            ExpectedCounts(p, c)
-        end
+    @closure function get_expected_counts(catidx, ruleidx)
+        dcompidx = g.catidx2dcompidx[catidx]
+        p        = getfield(score(g, catidx, ruleidx), base_score_name)
+        m, n     = length(g.depcomps), length(g.all_rules)
+        c        = sparse([dcompidx], [ruleidx], p, m, n)
+        ExpectedCounts(p, c)
+    end
 end
 
 function add_expected_count_score(
-        g::Grammar, base_score_name::Symbol, score_name::Symbol=:exp_counts)
+        g::Grammar, base_score_name::Symbol, score_name::Symbol=:exp_counts
+    )
     add_score(g, score_name, expected_count_score(g, base_score_name))
 end
 
@@ -151,7 +152,8 @@ function random_prob_score(g::Grammar, base_score_name::Symbol)
 end
 
 function add_random_prob_score(
-        g::Grammar, base_score_name::Symbol, score_name::Symbol=:prob)
+        g::Grammar, base_score_name::Symbol, score_name::Symbol=:prob
+    )
     add_score(g, score_name, random_prob_score(g, base_score_name))
 end
 
@@ -168,10 +170,12 @@ end
 zero(::Type{EnumForest}) = EnumForest(Vector{Tuple{Int, Int}}[])
 one(::Type{EnumForest})  = EnumForest([Tuple{Int, Int}[]])
 
-+(f::EnumForest, g::EnumForest) =
+function +(f::EnumForest, g::EnumForest)
     EnumForest( [f.trees; g.trees] )
-*(f::EnumForest, g::EnumForest) =
+end
+function *(f::EnumForest, g::EnumForest)
     EnumForest( [[tf; tg] for tf in f.trees for tg in g.trees] )
+end
 
 ######################
 ### Scored Forests ###
@@ -186,7 +190,7 @@ forest_score(score) = function (catidx, ruleidx)
     [RuleApp(catidx, ruleidx, score(catidx, ruleidx))]
 end
 
-mutable struct RuleApp{S}
+struct RuleApp{S}
     catidx   :: Int
     ruleidx  :: Int
     children :: Vector{Vector{RuleApp{S}}}
@@ -202,20 +206,36 @@ score(f::ScoredForest) = sum(ra.score for ra in f)
 
 zero(::Type{ScoredForest{S}}) where S = RuleApp{S}[]
 
-+(f::ScoredForest, g::ScoredForest) = append!(f, g)
-+(f::ScoredForest, ra::RuleApp) = push!(f, ra)
+# +(f::ScoredForest, g::ScoredForest) = append!(f, g)
+# +(f::ScoredForest, ra::RuleApp) = push!(f, ra)
+
+# function *(ra::RuleApp, f::ScoredForest)
+#     ra.score *= score(f)
+#     push!(ra.children, f)
+#     ra
+# end
+
+# function *(f1::ScoredForest, f2::ScoredForest)
+#     for ra1 in f1
+# 		ra1 * f2
+#     end
+#     f1
+# end
+
++(f::ScoredForest, g::ScoredForest) = [f; g]
++(f::ScoredForest, ra::RuleApp) = [f; [ra]]
 
 function *(f1::ScoredForest, f2::ScoredForest)
-    for ra1 in f1
-		ra1 * f2
-    end
-    f1
+    [ra * f2 for ra in f1]
 end
 
 function *(ra::RuleApp, f::ScoredForest)
-	ra.score *= score(f)
-	push!(ra.children, f)
-	ra
+    RuleApp(
+        ra.catidx,
+        ra.ruleidx,
+        [ra.children; [f]],
+        ra.score * score(f)
+    )
 end
 
 #############################
