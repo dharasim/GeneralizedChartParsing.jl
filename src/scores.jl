@@ -15,113 +15,100 @@ end
 +(a::T, b::T) where T <: Union{Tuple, NamedTuple} = map(+, a, b)
 *(a::T, b::T) where T <: Union{Tuple, NamedTuple} = map(*, a, b)
 
-#############################
-### general score methods ###
-#############################
-
-function set_scores(g::Grammar, scores::NamedTuple)
-    Grammar(
-        g.categories,
-        g.start_categories,
-        g.depcomp,
-        g.depcomps,
-        g.catidx2dcompidx,
-        g.binary_rules,
-        g.terminal_rules,
-        g.all_rules,
-        g.binary_dict,
-        g.terminal_dict,
-        scores
-    )
-end
-
-function add_score(g::Grammar, name::Symbol, score)
-    set_scores(g, merge(g.scores, NamedTuple{(name,)}((score,))))
-end
-
-function tabulate_score(g::Grammar, score_name::Symbol)
-    collect(
-        getfield(score(g, catidx, ruleidx), score_name)
-        for catidx  in findallin(unique(g.depcomp, g.categories), g.categories),
-            ruleidx in eachindex(g.all_rules)
-    )
-end
-
 ###################
 ### Count Score ###
 ###################
 
 count_score(category, rule) = rule(category) === nothing ? 0 : 1
 
+#######################
+### Transform Score ###
+#######################
+
+# f :: Category × Rule × OldScore -> NewScore
+function transform_score(f, grammar::Grammar)
+	transform_completions(comps) = map(comps) do comp
+		c, r, s = comp.cid, comp.rid, comp.score
+		Completion(c, r, f(grammar.categories[c], grammar.rules[r], s))
+	end
+
+	Grammar(
+		grammar.categories,
+		grammar.rules,
+		map(transform_completions, grammar.unary_completions),
+		map(transform_completions, grammar.binary_completions)
+	)
+end
+
 #############################
 ### Expected Counts Score ###
 #############################
 
-function expected_count_score(g::Grammar, base_score_name::Symbol)
-    @closure function get_expected_counts(catidx, ruleidx)
-        dcompidx = g.catidx2dcompidx[catidx]
-        p        = getfield(score(g, catidx, ruleidx), base_score_name)
-        m, n     = length(g.depcomps), length(g.all_rules)
-        c        = sparse([dcompidx], [ruleidx], p, m, n)
-        ExpectedCounts(p, c)
-    end
-end
-
-function add_expected_count_score(
-        g::Grammar, base_score_name::Symbol, score_name::Symbol=:exp_counts
-    )
-    add_score(g, score_name, expected_count_score(g, base_score_name))
-end
-
-struct ExpectedCounts{m, n, S, A <: AbstractMatrix{S}}
-    inside_score    :: S
-    expected_counts :: A
-
-    function ExpectedCounts(inside_score::S, expected_counts::A) where
-            {S, A <: AbstractMatrix{S}}
-        m, n = size(expected_counts)
-        new{m, n, S, A}(inside_score, expected_counts)
-    end
-end
-
-function expected_counts_dataframe(
-        g::Grammar, ec::ExpectedCounts{m, n, S, SparseMatrixCSC{S, Int}}
-    ) where {m ,n, S}
-
-    M = ec.expected_counts / ec.inside_score
-    dcompidxs, ruleidxs, counts = findnz(M)
-    DataFrame(
-        dcomp = g.depcomps[dcompidxs],
-        rule  = g.all_rules[ruleidxs],
-        count = counts
-    )
-end
-
-function zero(::Type{ExpectedCounts{m, n, S, Matrix{S}}}) where {m ,n, S}
-    ExpectedCounts(zero(S), zeros(S, m, n))
-end
-
-function one(::Type{ExpectedCounts{m, n, S, Matrix{S}}}) where {m ,n, S}
-    ExpectedCounts(one(S), zeros(S, m, n))
-end
-
-function zero(::Type{ExpectedCounts{m, n, S, SparseMatrixCSC{S, Int}}}) where {m ,n, S}
-    ExpectedCounts(zero(S), spzeros(S, m, n))
-end
-
-function one(::Type{ExpectedCounts{m, n, S, SparseMatrixCSC{S, Int}}}) where {m ,n, S}
-    ExpectedCounts(one(S), spzeros(S, m, n))
-end
-
-function +(c::ExpectedCounts, d::ExpectedCounts)
-    ExpectedCounts(c.inside_score    + d.inside_score,
-                   c.expected_counts + d.expected_counts)
-end
-
-function *(c::ExpectedCounts, d::ExpectedCounts)
-    p, q = c.inside_score, d.inside_score
-    ExpectedCounts(p * q, p * d.expected_counts + q * c.expected_counts)
-end
+# function expected_count_score(g::Grammar, base_score_name::Symbol)
+#     @closure function get_expected_counts(catidx, ruleidx)
+#         dcompidx = g.catidx2dcompidx[catidx]
+#         p        = getfield(score(g, catidx, ruleidx), base_score_name)
+#         m, n     = length(g.depcomps), length(g.all_rules)
+#         c        = sparse([dcompidx], [ruleidx], p, m, n)
+#         ExpectedCounts(p, c)
+#     end
+# end
+#
+# function add_expected_count_score(
+#         g::Grammar, base_score_name::Symbol, score_name::Symbol=:exp_counts
+#     )
+#     add_score(g, score_name, expected_count_score(g, base_score_name))
+# end
+#
+# struct ExpectedCounts{m, n, S, A <: AbstractMatrix{S}}
+#     inside_score    :: S
+#     expected_counts :: A
+#
+#     function ExpectedCounts(inside_score::S, expected_counts::A) where
+#             {S, A <: AbstractMatrix{S}}
+#         m, n = size(expected_counts)
+#         new{m, n, S, A}(inside_score, expected_counts)
+#     end
+# end
+#
+# function expected_counts_dataframe(
+#         g::Grammar, ec::ExpectedCounts{m, n, S, SparseMatrixCSC{S, Int}}
+#     ) where {m ,n, S}
+#
+#     M = ec.expected_counts / ec.inside_score
+#     dcompidxs, ruleidxs, counts = findnz(M)
+#     DataFrame(
+#         dcomp = g.depcomps[dcompidxs],
+#         rule  = g.all_rules[ruleidxs],
+#         count = counts
+#     )
+# end
+#
+# function zero(::Type{ExpectedCounts{m, n, S, Matrix{S}}}) where {m ,n, S}
+#     ExpectedCounts(zero(S), zeros(S, m, n))
+# end
+#
+# function one(::Type{ExpectedCounts{m, n, S, Matrix{S}}}) where {m ,n, S}
+#     ExpectedCounts(one(S), zeros(S, m, n))
+# end
+#
+# function zero(::Type{ExpectedCounts{m, n, S, SparseMatrixCSC{S, Int}}}) where {m ,n, S}
+#     ExpectedCounts(zero(S), spzeros(S, m, n))
+# end
+#
+# function one(::Type{ExpectedCounts{m, n, S, SparseMatrixCSC{S, Int}}}) where {m ,n, S}
+#     ExpectedCounts(one(S), spzeros(S, m, n))
+# end
+#
+# function +(c::ExpectedCounts, d::ExpectedCounts)
+#     ExpectedCounts(c.inside_score    + d.inside_score,
+#                    c.expected_counts + d.expected_counts)
+# end
+#
+# function *(c::ExpectedCounts, d::ExpectedCounts)
+#     p, q = c.inside_score, d.inside_score
+#     ExpectedCounts(p * q, p * d.expected_counts + q * c.expected_counts)
+# end
 
 #########################
 ### Random Prob Score ###
@@ -205,22 +192,6 @@ ScoredForest{S} = Vector{RuleApp{S}}
 score(f::ScoredForest) = sum(ra.score for ra in f)
 
 zero(::Type{ScoredForest{S}}) where S = RuleApp{S}[]
-
-# +(f::ScoredForest, g::ScoredForest) = append!(f, g)
-# +(f::ScoredForest, ra::RuleApp) = push!(f, ra)
-
-# function *(ra::RuleApp, f::ScoredForest)
-#     ra.score *= score(f)
-#     push!(ra.children, f)
-#     ra
-# end
-
-# function *(f1::ScoredForest, f2::ScoredForest)
-#     for ra1 in f1
-# 		ra1 * f2
-#     end
-#     f1
-# end
 
 +(f::ScoredForest, g::ScoredForest) = [f; g]
 +(f::ScoredForest, ra::RuleApp) = [f; [ra]]

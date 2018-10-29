@@ -10,145 +10,89 @@ end
 show(io::IO, nf::NamedFunction) = print(io, nf.name)
 (nf::NamedFunction)(x)  = (nf.f)(x)
 
-#####################
-### Grammar Class ###
-#####################
+################
+### Grammars ###
+################
 
-isapplicable(r, c) = r(c) !== nothing
-
-Completion = Tuple{Int, Int} # category indices and rule indices
-
-mutable struct Grammar{C, D, F, S, T}
-    categories       :: Vector{C}
-    start_categories :: Vector{C}
-    depcomp          :: F
-    depcomps         :: Vector{D}
-    catidx2dcompidx  :: Vector{Int}
-    binary_rules     :: Vector{Function}
-    terminal_rules   :: Vector{Function}
-    all_rules        :: Vector{Function}
-    binary_dict      :: Dict{Tuple{Int, Int}, Vector{Completion}}
-    terminal_dict    :: Dict{T, Vector{Completion}}
-    scores           :: S
+struct Completion{S}
+    cid   :: Int
+    rid   :: Int
+    score :: S
 end
 
-function Grammar(
-        categories       :: Vector,
-        start_categories :: Vector,
-        binary_rules_    :: Vector,
-        terminal_rules_  :: Vector,
-        depcomp,
-        scores_          :: NamedTuple = (count = count_score,)
-    )
+struct Grammar{C,R,S}
+    categories         :: Vector{C}
+    rules              :: Vector{R}
+    unary_completions  :: Vector{Vector{Completion{S}}}
+    binary_completions :: Matrix{Vector{Completion{S}}}
+end
 
-    terminal_rules = convert(Vector{Function}, terminal_rules_)
-    binary_rules   = convert(Vector{Function}, binary_rules_)
+function Grammar(categories, rules, score)
+    S = typeof(score(first(categories), first(rules)))
+    n = length(categories)
+    unary_completions  = [Vector{Completion{S}}() for c in categories]
+    binary_completions = [Vector{Completion{S}}() for c1 in categories, c2 in categories]
 
-    depcomps  = unique(map(depcomp, categories))
-    all_rules = vcat(binary_rules, terminal_rules)
+    "category ID"
+    cid(category) = findfirst(isequal(category), categories) :: Int
 
-    function find_elem_in(x, xs)
-        i = findfirst(y->x==y, xs)
-        @assert i > 0 "$x not in $xs"
-        i
-    end
-
-    catidx   = @closure c  -> find_elem_in(c,  categories)
-    dcompidx = @closure dc -> find_elem_in(dc, depcomps)
-    ruleidx  = @closure r  -> find_elem_in(r,  all_rules)
-
-    catidx2dcompidx = map(dcompidx ∘ depcomp, categories)
-
-    binary_rhss = collect(
-        (map(catidx, r(c)), (catidx(c), ruleidx(r)))
-        for r in binary_rules for c in categories if isapplicable(r, c)
-    )
-
-    terminal_rhss = collect(
-        (r(c), (catidx(c), ruleidx(r)))
-        for r in terminal_rules for c in categories if isapplicable(r, c)
-    )
-
-    function multidict_from_list(list::AbstractVector{Tuple{K, V}}) where {K, V}
-        foldr(list, init = Dict{K, Vector{V}}()) do (k, v), d
-            haskey(d, k) ? push!(d[k], v) : d[k] = [v]
-            d
+    for (c, category) in enumerate(categories)
+        for (r, rule) in enumerate(rules)
+            rhs = rule(category)
+            if rhs === nothing
+                continue
+            elseif rhs isa Tuple
+                @assert length(rhs) == 2
+                push!(
+                    binary_completions[cid(rhs[1]), cid(rhs[2])],
+                    Completion(c, r, score(category, rule)))
+            else
+                push!(
+                    unary_completions[cid(rhs)],
+                    Completion(c, r, score(category, rule)))
+            end
         end
     end
-
-    binary_dict   = multidict_from_list(binary_rhss)
-    terminal_dict = multidict_from_list(terminal_rhss)
-
-    one_dcomp_per_category = unique(depcomp, categories)
-    score_matrix(s) = [s(c, r) for c in one_dcomp_per_category, r in all_rules]
-    score_matrices  = map(score_matrix, scores_)
-
-    scores = map(score_matrices) do M
-        @closure (catidx, ruleidx) -> M[catidx2dcompidx[catidx], ruleidx]
-    end
-
-    Grammar(
-        categories,
-        start_categories,
-        depcomp,
-        depcomps,
-        catidx2dcompidx,
-        binary_rules,
-        terminal_rules,
-        all_rules,
-        binary_dict,
-        terminal_dict,
-        scores
-    )
+    Grammar(collect(categories), collect(rules), unary_completions, binary_completions)
 end
 
-score(g::Grammar, catidx, ruleidx) = map(eval_at(catidx, ruleidx), g.scores)
-mergeable(g::Grammar, rhs)         = haskey(g.binary_dict, rhs)
-merge(g::Grammar, rhs)             = g.binary_dict[rhs]
+scoretype(grammar::Grammar{C,R,S}) where {C,R,S} = S
+cid(grammar::Grammar, category) = findfirst(isequal(category), grammar.categories)
+completions(grammar::Grammar, c::Int) = grammar.unary_completions[c]
+completions(grammar::Grammar, c1::Int, c2::Int) = grammar.binary_completions[c1, c2]
 
-function categorize(g::Grammar, terminal)
-    if haskey(g.terminal_dict, terminal)
-        g.terminal_dict[terminal]
+function Base.parse(grammar::Grammar, terminals)
+    insert!(cell, c, s) = if haskey(cell, c)
+        cell[c] += s
     else
-        Vector{Completion}()
+        cell[c]  = s
     end
-end
 
-##################
-### The Parser ###
-##################
-
-"""
-    parse(grammar, terminals)
-
-parse the sequence of terminals according to the grammar, return a dictionary
-that maps head categories to their semiring values
-
-The metod first creates the diagonal of the chart as a dictionary,
-then updates this dictionary dynammicaly using a `LazyDict`,
-applying dynamic programming under the hood automatically.
-"""
-function parse(g::Grammar, terminals)
     initial_chart = Dict(
-        (i, i) => Dict(
-            lhs => score(g, lhs, r)
-            for (lhs, r) in categorize(g, t)
-        )
+        (i, i) => Dict(cid(grammar, t) => one(scoretype(grammar)))
         for (i, t) in enumerate(terminals)
     )
+
+    for i in eachindex(terminals)
+        cell = initial_chart[i, i]
+        for c in keys(cell)
+            for comp in completions(grammar, c)
+                insert!(cell, comp.cid, comp.score)
+            end
+        end
+    end
 
     chart = LazyDict(initial_chart) do i, j
         cell = valtype(initial_chart)()
         for k in i : j-1
-            for (rhs1, s1) in chart[i, k]
-                for (rhs2, s2) in chart[k+1, j]
-                    if mergeable(g, (rhs1, rhs2))
-                        for (lhs, r) in merge(g, (rhs1, rhs2))
-                            if haskey(cell, lhs)
-                                cell[lhs] += score(g, lhs, r) * s1 * s2
-                            else
-                                cell[lhs] =  score(g, lhs, r) * s1 * s2
-                            end
+            for (c1, s1) in chart[i, k]
+                for (c2, s2) in chart[k+1, j]
+                    for bcomp in completions(grammar, c1, c2)
+                        c = bcomp.cid
+                        s = bcomp.score * s1 * s2
+                        insert!(cell, c, s)
+                        for ucomp in completions(grammar, c)
+                            insert!(cell, ucomp.cid, ucomp.score * s)
                         end
                     end
                 end
@@ -156,10 +100,16 @@ function parse(g::Grammar, terminals)
         end
         cell
     end
-
-    heads = chart[1, length(terminals)]
-    Dict(
-        startcat => haskey(heads, catidx) ? heads[catidx] : zero(valtype(heads))
-        for (catidx, startcat) in enumerate(g.start_categories)
-    )
 end
+
+count_score(category, rule) = rule(category) === nothing ? 0 : 1
+double(x)        = (x, x)
+countup(x)       = x <= 9 ? (x, x+1) : nothing
+g = Grammar(1:10, [double, countup], count_score)
+
+f = (category, rule, s) -> "$category $rule $s"
+
+transform_score(f, g)
+
+function sample_prob_score(category, rules)
+    function (rule, pseudocount)
