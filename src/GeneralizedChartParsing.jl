@@ -1,16 +1,14 @@
-__precompile__()
-
 module GeneralizedChartParsing
 
 # from standard library
-using Distributed
-using SpecialFunctions: digamma
-using SparseArrays:     SparseMatrixCSC, sparse, spzeros, findnz
-using LinearAlgebra:    normalize
+# using Distributed
+# using SpecialFunctions: digamma
+# using SparseArrays:     SparseMatrixCSC, sparse, spzeros, findnz
+# using LinearAlgebra:    normalize
 
 # other packages
 using LogProbs
-using FastClosures
+# using FastClosures
 using DataFrames
 using Distributions: Dirichlet
 
