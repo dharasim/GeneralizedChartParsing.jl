@@ -9,6 +9,7 @@ using LinearAlgebra: normalize, norm
 using LogProbs
 using Distributions: Dirichlet
 using Setfield
+using FastClosures
 
 # imports
 import Base: zero, one, +, *
@@ -16,7 +17,7 @@ import Base: IteratorSize, eltype, iterate
 import Base: parse, rand, merge, convert, show
 
 # exports
-export NamedFunction, tabulate
+export NamedFunction, tabulate, rule_from_dict, make_rule
 export Grammar, train_grammar
 export count_score, random_prob_scores, forest_scores
 export tree_struct
