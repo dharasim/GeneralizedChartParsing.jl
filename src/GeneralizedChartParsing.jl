@@ -1,16 +1,14 @@
 module GeneralizedChartParsing
 
 # from standard library
-# using Distributed
-# using SpecialFunctions: digamma
-# using SparseArrays:     SparseMatrixCSC, sparse, spzeros, findnz
-# using LinearAlgebra:    normalize
+using Distributed
+using SpecialFunctions: digamma
+using LinearAlgebra: normalize, norm
 
-# other packages
+# from other packages
 using LogProbs
-# using FastClosures
-using DataFrames
 using Distributions: Dirichlet
+using Setfield
 
 # imports
 import Base: zero, one, +, *
@@ -18,22 +16,19 @@ import Base: IteratorSize, eltype, iterate
 import Base: parse, rand, merge, convert, show
 
 # exports
-export NamedFunction
-export Grammar, grammar_from_string, train_grammar
-export add_score, set_scores
-export add_random_prob_score, add_expected_count_score, add_forest_score
-export count_score, enum_forest_score, forest_score
-export tree_struct, tree_structs, expected_counts_dataframe
+export NamedFunction, tabulate
+export Grammar, train_grammar
+export count_score, random_prob_scores, forest_scores
+export tree_struct
 
 include("utils.jl")
 include("LazyDicts.jl")
-include("newtrees.jl")
 include("Grammars.jl")
 include("scores.jl")
-include("grammar_from_string.jl")
+include("ScoredForests.jl")
 include("variational_bayes.jl")
 
-using .Trees
 using .LazyDicts
+using .ScoredForests
 
 end # module

@@ -1,3 +1,53 @@
+######################
+### NamedFunctions ###
+######################
+
+struct NamedFunction{F} <: Function
+    name :: String
+    f    :: F
+end
+
+show(io::IO, nf::NamedFunction) = print(io, nf.name)
+(nf::NamedFunction)(args...)  = (nf.f)(args...)
+
+##########################
+### Tabulate Functions ###
+##########################
+
+tabulate(f, xs)         = [f(x) for x in xs]
+tabulate(f, xs, ys)     = [f(x, y) for x in xs, y in ys]
+tabulate(f, xs, ys, zs) = [f(x, y, z) for x in xs, y in ys, z in zs]
+
+##################################
+### Equivalence Classification ###
+##################################
+
+function equivalence_classes(f, n::Int)
+    classes   = zeros(Int, n)
+    n_classes = 0 # number of distinct classes
+
+    for i in 1:n
+        classified = false
+        for j in 1:i-1
+            if f(i) == f(j)
+                classes[i] = classes[j]
+                classified = true
+                break
+            end
+        end
+        if !classified
+            n_classes += 1
+            classes[i] = n_classes
+        end
+    end
+
+    classes
+end
+
+#######################
+### Other Utilities ###
+#######################
+
 eval_at(args...) = f -> f(args...)
 findallin(xs, ys) = map(x -> findfirst(y -> x == y, ys), xs)
 

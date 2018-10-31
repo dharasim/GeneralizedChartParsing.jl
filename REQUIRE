@@ -1,6 +1,5 @@
 julia 0.7
 LogProbs
-FastClosures
-DataFrames
+Setfield
 Distributions
 SpecialFunctions
