@@ -29,7 +29,6 @@ g = let r1(x)      = ("S", "S"),
     Grammar(categories, terminals, rules, scores)
 end
 
-
 dataset = let terminals = [fill("a", 3); fill("b", 7)]
     [terminals[randperm(10)] for i in 1:100]
 end

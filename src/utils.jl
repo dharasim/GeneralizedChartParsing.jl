@@ -53,7 +53,7 @@ make_rule(pairs...) = rule_from_dict(Dict(pairs...))
 #
 # eval_at(args...) = f -> f(args...)
 # findallin(xs, ys) = map(x -> findfirst(y -> x == y, ys), xs)
-# 
+#
 # """
 #     catalan_number(n)
 #
