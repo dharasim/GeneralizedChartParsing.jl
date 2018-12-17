@@ -5,7 +5,7 @@ import Base: one, isone, zero, iszero, +, *, ==, rand, show
 import TikzQTrees
 using  TikzQTrees: TikzQTree, SimpleTree, children
 
-export forest_scores, tree_struct
+export forest_scores, tree_struct, greedy_best_tree
 
 @enum ForestTag PRIMITIVE SUM PRODUCT ZERO ONE
 
@@ -78,6 +78,25 @@ function rand(f::ScoredForest{V,S}) where {V,S}
     samples = V[]
     rand!(samples, f)
     samples
+end
+
+function greedy_best_tree(f::ScoredForest{V,S}) where {V,S}
+	function best!(selection, f::ScoredForest{V,S}) where {V,S}
+		if isprim(f)
+			push!(selection, value(f))
+        elseif issum(f)
+            l, r = left(f), right(f)
+			score(l) > score(r) ? best!(selection, l) : best!(selection, r)
+		elseif isprod(f)
+			best!(selection, left(f))
+			best!(selection, right(f))
+		end
+		return nothing
+	end
+
+	selection = V[]
+	best!(selection, f)
+	selection
 end
 
 function forest_scores(basescores::AbstractMatrix{S}) where S

@@ -1,18 +1,19 @@
-"""
-    estimate_rule_counts(grammar, terminals; n_samples = length(terminals)^2)
+# """
+#     estimate_rule_counts(grammar, terminals; n_samples = length(terminals)^2)
+#
+# Parse `terminals` using `grammar` and calculate a Monte Carlo estimate of
+# of the expected rule usage in the parse tree for all dependent category
+# components and rules, return a tuple of the expected counts as a matrix and
+# the likelihood as a `LogProb`
+#
+# # Assumptions
+# - the number of used rules is constant for each parse tree
+# - `grammar` has a score named `:prob` to calculate the likelihood
+# - `grammar` has a score named `:forest` from which trees can be sampled as
+#   iterable objects of tuples of category indices and rule indices
+# """
 
-Parse `terminals` using `grammar` and calculate a Monte Carlo estimate of
-of the expected rule usage in the parse tree for all dependent category
-components and rules, return a tuple of the expected counts as a matrix and
-the likelihood as a `LogProb`
-
-# Assumptions
-- the number of used rules is constant for each parse tree
-- `grammar` has a score named `:prob` to calculate the likelihood
-- `grammar` has a score named `:forest` from which trees can be sampled as
-  iterable objects of tuples of category indices and rule indices
-"""
-function estimate_rule_counts(
+@everywhere function estimate_rule_counts(
         grammar :: Grammar, terminals; n_samples = length(terminals)^2
     )
 
@@ -71,14 +72,24 @@ the initial grammar.
 - `grammar` has a score named `:forest` from which trees can be sampled as
   iterable objects of tuples of category indices and rule indices
 """
-function train_grammar(grammar::Grammar, dataset)
+function train_grammar(grammar::Grammar, dataset; workers=workers())
     # add counts, multiply likelihoods
-    reduce((c1, p1), (c2, p2)) = (c1 + c2, p1 * p2)
+    addmul((c1, p1), (c2, p2)) = (c1 + c2, p1 * p2)
 
     # calculate rule count estimates in parallel
-    rule_counts, likelihood = @distributed reduce for terminals in dataset
-        estimate_rule_counts(grammar, terminals)
-    end
+    rule_counts, likelihood = reduce( addmul,
+        let wp = CachingPool(workers), g = grammar
+            pmap(wp, dataset) do sequence
+                estimate_rule_counts(g, sequence)
+            end
+        end
+    )
+
+    # this closure caches `grammar` on all workers
+    # @everywhere estimate_rule_counts_(sequence) = estimate_rule_counts(grammar, sequence)
+    # rule_counts, likelihood = @distributed reduce for sequence in dataset
+    #     estimate_rule_counts_(sequence)
+    # end
 
     # classify rule counts
     cls = unique(grammar.classes)

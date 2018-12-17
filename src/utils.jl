@@ -3,8 +3,8 @@
 ######################
 
 struct NamedFunction{F} <: Function
-    name :: String
     f    :: F
+    name :: String
 end
 
 show(io::IO, nf::NamedFunction) = print(io, nf.name)

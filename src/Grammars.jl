@@ -92,3 +92,13 @@ function parse(grammar::Grammar{S}, sequence) where S
         cell
     end
 end
+
+function scores(grammar::Grammar{S}, sequences; workers=workers()) where S
+    wpool = CachingPool(workers)
+    let g = grammar
+        pmap(wpool, sequences) do sequence
+            heads = parse(g, sequence)[1,length(sequence)]
+            get(heads, 1, zero(S))
+        end
+    end
+end   

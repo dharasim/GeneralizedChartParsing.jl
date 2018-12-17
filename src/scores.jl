@@ -19,6 +19,24 @@ function Base.Iterators.zip(t::NamedTuple{names, T}) where {names, T}
 	map(NamedTuple{names}, map(tuple, t...))
 end
 
+########################
+### Arctic Semirings ###
+########################
+
+# assumes all values to be greater than zero
+
+struct Viterbi{T}
+	value :: T
+end
+
++(a::Viterbi, b::Viterbi) = Viterbi(max(a.value, b.value))
+*(a::Viterbi, b::Viterbi) = Viterbi(a.value * b.value)
+zero(::Type{Viterbi{T}}) where T = Viterbi(zero(T))
+one(::Type{Viterbi{T}}) where T = Viterbi(one(T))
+iszero(a::Viterbi) = iszero(a.value)
+isone(a::Viterbi) = isone(a.value)
+isless(a::Viterbi, b::Viterbi) = isless(a.value, b.value)
+
 ###################
 ### Count Score ###
 ###################
