@@ -5,7 +5,9 @@ import Base: one, isone, zero, iszero, +, *, ==, rand, show
 import TikzQTrees
 using  TikzQTrees: TikzQTree, SimpleTree, children
 
-export forest_scores, tree_struct, greedy_best_tree
+using FastClosures
+
+export forest_scores, forest_score, tree_struct, greedy_best_tree
 
 @enum ForestTag PRIMITIVE SUM PRODUCT ZERO ONE
 
@@ -107,6 +109,13 @@ function forest_scores(basescores::AbstractMatrix{S}) where S
 		s = basescores[c, r]
 		iszero(s) ? ZeroForest(Tuple{Int, Int}, S) : PrimitiveForest((c, r), s)
 	end
+end
+
+function forest_score(basescore)
+    @closure function score(c, r)
+        s = basescore(c, r)
+        iszero(s) ? ZeroForest(Tuple{Int, Int}, typeof(s)) : PrimitiveForest((c, r), s)
+    end
 end
 
 function tree_struct(categories, terminals, rules, tree::Vector{Tuple{Int,Int}})

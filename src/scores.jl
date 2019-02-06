@@ -59,6 +59,28 @@ function random_prob_scores(pseudocounts::AbstractMatrix)
 	mapslices(zero_robust_dirichlet_sample, pseudocounts, dims=2)
 end
 
+using Distributions: Gamma
+
+function random_prob_score(n_nonterminals, n_rules, pseudocount)
+    gamma_samples = Dict(
+        (c, r) => LogProb(rand(Gamma(pseudocount(c, r), 1)))
+        for c in 1:n_nonterminals 
+        for r in 1:n_rules 
+        if !iszero(pseudocount(c,r))
+    )
+
+    sums = foldl(gamma_samples, init=Dict{Int,LogProb}()) do d, ((c, r), q)
+        merge!(+, d, Dict(c => q))
+    end
+
+    probs = Dict(
+        (c, r) => gamma_samples[c, r] / sums[c] 
+        for (c, r) in keys(gamma_samples)
+    )
+
+    @closure (c, r) -> probs[c, r]
+end
+
 ##########################
 ### Enumerated Forests ###
 ##########################
@@ -75,6 +97,7 @@ one(::Type{EnumForest})  = EnumForest([Tuple{Int, Int}[]])
 function +(f::EnumForest, g::EnumForest)
     EnumForest( [f.trees; g.trees] )
 end
+
 function *(f::EnumForest, g::EnumForest)
     EnumForest( [[tf; tg] for tf in f.trees for tg in g.trees] )
 end

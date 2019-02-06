@@ -6,7 +6,8 @@ countup(x) = x <= 9 ? (x, x+1) : nothing
 terminate(x) = string(x)
 g = Grammar(1:10, map(string, 1:10), [double, countup, terminate], count_score)
 
-@test parse(g, split("1 1 2 3 2"))[1,5][1] == 5
+# @test parse(g, split("1 1 2 3 2"))[1,5][1] == 5
+@test parse(g, split("1 1 2 3 2")) == 5
 
 h = @set g.scores = g.scores |> random_prob_scores |> forest_scores
 

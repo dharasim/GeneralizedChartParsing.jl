@@ -18,8 +18,8 @@ import Base: parse, rand, merge, convert, show
 
 # exports
 export NamedFunction, tabulate, rule_from_dict, make_rule
-export Grammar, scores
-export count_score, random_prob_scores, forest_scores
+export Grammar, scores, count_score
+export random_prob_scores, random_prob_score, forest_scores, forest_score
 export Viterbi, greedy_best_tree
 export tree_struct, tabulate
 
